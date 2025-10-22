@@ -1,24 +1,21 @@
 //Using Express
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors')
+const cors = require('cors');
 
 //create an instance of express
 const app = express();
-app.use(express.json())
-app.use(cors())
-
-//Sample in-memory storage for todo items
-// let todos = [];
+app.use(express.json());
+app.use(cors());
 
 // connecting mongodb
 mongoose.connect('mongodb://localhost:27017/mern-app')
 .then(() => {
-    console.log('DB Connected!')
+    console.log('DB Connected!');
 })
 .catch((err) => {
-    console.log(err)
-})
+    console.log(err);
+});
 
 //creating schema
 const todoSchema = new mongoose.Schema({
@@ -26,33 +23,25 @@ const todoSchema = new mongoose.Schema({
         required: true,
         type: String
     },
-    description: String
-})
+    description: String,
+    completed: { type: Boolean, default: false } // <-- added completed field
+});
 
 //creating model
 const todoModel = mongoose.model('Todo', todoSchema);
 
 //Create a new todo item
 app.post('/todos', async (req, res) => {
-    const {title, description} = req.body;
-    // const newTodo = {
-    //     id: todos.length + 1,
-    //     title,
-    //     description
-    // };
-    // todos.push(newTodo);
-    // console.log(todos);
+    const { title, description, completed } = req.body;
     try {
-        const newTodo = new todoModel({title, description});
+        const newTodo = new todoModel({ title, description, completed: completed || false });
         await newTodo.save();
         res.status(201).json(newTodo);
     } catch (error) {
-        console.log(error)
-        res.status(500).json({message: error.message});
+        console.log(error);
+        res.status(500).json({ message: error.message });
     }
-   
-
-})
+});
 
 //Get all items
 app.get('/todos', async (req, res) => {
@@ -60,33 +49,31 @@ app.get('/todos', async (req, res) => {
         const todos = await todoModel.find();
         res.json(todos);
     } catch (error) {
-        console.log(error)
-        res.status(500).json({message: error.message});
+        console.log(error);
+        res.status(500).json({ message: error.message });
     }
-})
+});
 
 // Update a todo item
 app.put("/todos/:id", async (req, res) => {
     try {
-        const {title, description} = req.body;
+        const { title, description, completed } = req.body; // <-- include completed
         const id = req.params.id;
         const updatedTodo = await todoModel.findByIdAndUpdate(
             id,
-            { title , description},
+            { title, description, completed },
             { new: true }
-        )
-    
+        );
+
         if (!updatedTodo) {
-            return res.status(404).json({ message: "Todo not found"})
+            return res.status(404).json({ message: "Todo not found" });
         }
-        res.json(updatedTodo)
+        res.json(updatedTodo);
     } catch (error) {
-        console.log(error)
-        res.status(500).json({message: error.message});
+        console.log(error);
+        res.status(500).json({ message: error.message });
     }
-
-
-})
+});
 
 // Delete a todo item
 app.delete('/todos/:id', async (req, res) => {
@@ -95,14 +82,13 @@ app.delete('/todos/:id', async (req, res) => {
         await todoModel.findByIdAndDelete(id);
         res.status(204).end();    
     } catch (error) {
-        console.log(error)
-        res.status(500).json({message: error.message});
+        console.log(error);
+        res.status(500).json({ message: error.message });
     }
-   
-})
+});
 
 //Start the server
 const port = 8000;
 app.listen(port, () => {
-    console.log("Server is listening to port "+port);
-})
+    console.log("Server is listening to port " + port);
+});
