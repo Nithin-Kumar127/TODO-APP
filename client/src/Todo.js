@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from "react-router-dom";
 
 export default function Todo() {
     const [title, setTitle] = useState("");
@@ -9,8 +10,17 @@ export default function Todo() {
     const [editId, setEditId] = useState(-1);
     const [editTitle, setEditTitle] = useState("");
     const [editDescription, setEditDesciption] = useState("");
+    const navigate = useNavigate();
 
     const apiUrl = "http://localhost:8000";
+
+    const token = localStorage.getItem("token");
+    if (!token) navigate("/login"); // redirect if not logged in
+
+    const authHeaders = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    };
 
     // Add task
     const handleSubmit = () => {
@@ -27,7 +37,7 @@ export default function Todo() {
 
         fetch(apiUrl + "/todos", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders,
             body: JSON.stringify({ title, description, completed: false }),
         })
         .then(res => res.json())
@@ -44,9 +54,13 @@ export default function Todo() {
     useEffect(() => { getItems(); }, []);
 
     const getItems = () => {
-        fetch(apiUrl + "/todos")
-        .then(res => res.json())
-        .then(res => setTodos(res));
+        fetch(apiUrl + "/todos", { headers: authHeaders })
+        .then(res => {
+            if (res.status === 401) navigate("/login"); // unauthorized
+            return res.json();
+        })
+        .then(res => setTodos(res))
+        .catch(() => toast.error("Unable to fetch tasks"));
     };
 
     // Edit task
@@ -71,7 +85,7 @@ export default function Todo() {
 
         fetch(`${apiUrl}/todos/${editId}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders,
             body: JSON.stringify({ 
                 title: editTitle, 
                 description: editDescription, 
@@ -94,7 +108,7 @@ export default function Todo() {
     // Delete task
     const handleDelete = (id) => {
         if (window.confirm("Are you sure you want to delete this task?")) {
-            fetch(`${apiUrl}/todos/${id}`, { method: "DELETE" })
+            fetch(`${apiUrl}/todos/${id}`, { method: "DELETE", headers: authHeaders })
             .then(() => {
                 setTodos(todos.filter(t => t._id !== id));
                 toast.success("Task deleted successfully!");
@@ -107,7 +121,7 @@ export default function Todo() {
     const handleToggleCompleted = (item) => {
         fetch(`${apiUrl}/todos/${item._id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders,
             body: JSON.stringify({ 
                 title: item.title, 
                 description: item.description, 
