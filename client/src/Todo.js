@@ -1,84 +1,109 @@
 import { useEffect, useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function Todo() {
     const [title, setTitle] = useState("");
     const [description, setDesciption] = useState("");
     const [todos, setTodos] = useState([]);
-    const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
     const [editId, setEditId] = useState(-1);
-
     const [editTitle, setEditTitle] = useState("");
     const [editDescription, setEditDesciption] = useState("");
 
     const apiUrl = "http://localhost:8000";
 
+    // Add task
     const handleSubmit = () => {
-        setError("");
-        if (title.trim() && description.trim()) {
-            fetch(apiUrl + "/todos", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, description, completed: false }),
-            })
-            .then(res => res.json())
-            .then(data => {
-                setTodos([...todos, data]);
-                setTitle(""); setDesciption("");
-                setMessage("Task added successfully");
-                setTimeout(() => setMessage(""), 3000);
-            })
-            .catch(() => setError("Unable to add task"));
+        if (!title.trim() && !description.trim()) {
+            toast.error("Please enter a title and description!");
+            return;
+        } else if (!title.trim()) {
+            toast.error("Please enter a task title!");
+            return;
+        } else if (!description.trim()) {
+            toast.error("Please enter a task description!");
+            return;
         }
-    }
 
+        fetch(apiUrl + "/todos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description, completed: false }),
+        })
+        .then(res => res.json())
+        .then(data => {
+            setTodos([...todos, data]);
+            setTitle(""); 
+            setDesciption("");
+            toast.success("Task added successfully!");
+        })
+        .catch(() => toast.error("Unable to add task"));
+    };
+
+    // Get tasks
     useEffect(() => { getItems(); }, []);
 
     const getItems = () => {
         fetch(apiUrl + "/todos")
         .then(res => res.json())
         .then(res => setTodos(res));
-    }
+    };
 
+    // Edit task
     const handleEdit = (item) => {
         setEditId(item._id);
         setEditTitle(item.title);
         setEditDesciption(item.description);
-    }
+    };
 
+    // Update task
     const handleUpdate = () => {
-        setError("");
-        if (editTitle.trim() && editDescription.trim()) {
-            fetch(apiUrl + "/todos/" + editId, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    title: editTitle, 
-                    description: editDescription, 
-                    completed: todos.find(t => t._id === editId).completed 
-                })
-            })
-            .then(res => res.json())
-            .then(updatedItem => {
-                setTodos(todos.map(t => t._id === updatedItem._id ? updatedItem : t));
-                setEditId(-1);
-                setEditTitle(""); setEditDesciption("");
-                setMessage("Task updated successfully");
-                setTimeout(() => setMessage(""), 3000);
-            })
-            .catch(() => setError("Unable to update task"));
+        if (!editTitle.trim() && !editDescription.trim()) {
+            toast.error("Please enter a title and description!");
+            return;
+        } else if (!editTitle.trim()) {
+            toast.error("Please enter a task title!");
+            return;
+        } else if (!editDescription.trim()) {
+            toast.error("Please enter a task description!");
+            return;
         }
-    }
+
+        fetch(`${apiUrl}/todos/${editId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                title: editTitle, 
+                description: editDescription, 
+                completed: todos.find(t => t._id === editId).completed 
+            })
+        })
+        .then(res => res.json())
+        .then(updatedItem => {
+            setTodos(todos.map(t => t._id === updatedItem._id ? updatedItem : t));
+            setEditId(-1);
+            setEditTitle(""); 
+            setEditDesciption("");
+            toast.success("Task updated successfully!");
+        })
+        .catch(() => toast.error("Unable to update task"));
+    };
 
     const handleEditCancel = () => setEditId(-1);
 
+    // Delete task
     const handleDelete = (id) => {
         if (window.confirm("Are you sure you want to delete this task?")) {
-            fetch(apiUrl + "/todos/" + id, { method: "DELETE" })
-            .then(() => setTodos(todos.filter(t => t._id !== id)));
+            fetch(`${apiUrl}/todos/${id}`, { method: "DELETE" })
+            .then(() => {
+                setTodos(todos.filter(t => t._id !== id));
+                toast.success("Task deleted successfully!");
+            })
+            .catch(() => toast.error("Unable to delete task"));
         }
-    }
+    };
 
+    // Toggle completed
     const handleToggleCompleted = (item) => {
         fetch(`${apiUrl}/todos/${item._id}`, {
             method: "PUT",
@@ -92,22 +117,23 @@ export default function Todo() {
         .then(res => res.json())
         .then(updatedItem => {
             setTodos(todos.map(t => t._id === updatedItem._id ? updatedItem : t));
+            toast.info(item.completed ? "Task marked incomplete" : "Task completed!");
         })
-        .catch(() => setError("Unable to update status"));
-    }
+        .catch(() => toast.error("Unable to update task status"));
+    };
 
-    return <>
+    return (
+        <>
+        <ToastContainer position="top-right" autoClose={3000} />
         <style>{`
             @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
             body { font-family: 'Poppins', sans-serif; background: #f5f6fa; min-height: 100vh; margin: 0; padding: 0; }
             .todo-container { max-width: 950px; margin: 40px auto; padding: 20px; }
-            
-            /* Header */
+
             .header-card { background: #667eea; border-radius: 20px; padding: 40px 30px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; color: white; }
             .header-card h1 { font-size: 3rem; margin-bottom: 10px; }
             .header-card p { font-size: 1.2rem; color: rgba(255,255,255,0.9); }
 
-            /* Add Task Card */
             .add-card { background: white; border-radius: 20px; padding: 30px 25px; margin-bottom: 30px; box-shadow: 0 6px 25px rgba(0,0,0,0.15); }
             .add-card h3 { font-size: 1.6rem; margin-bottom: 20px; color: #333; }
             .form-group { display: flex; gap: 15px; flex-wrap: wrap; }
@@ -116,11 +142,6 @@ export default function Todo() {
             .btn-submit { background: #667eea; color: white; border: none; border-radius: 12px; padding: 12px 25px; font-size: 1rem; cursor: pointer; transition: all 0.3s; }
             .btn-submit:hover { background: #5a67d8; transform: translateY(-2px); }
 
-            /* Alerts */
-            .alert-success { background: #4caf50; color: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; }
-            .alert-danger { background: #f44336; color: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; }
-
-            /* Tasks Card */
             .tasks-card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 6px 25px rgba(0,0,0,0.15); }
             .tasks-card h3 { font-size: 1.6rem; margin-bottom: 20px; color: #333; }
 
@@ -144,10 +165,7 @@ export default function Todo() {
             .btn-cancel { background: #a8edea; color: #333; }
             .btn-cancel:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(168,237,234,0.3); }
 
-            /* Checkbox */
             input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
-
-            /* Empty state */
             .empty-state { text-align: center; padding: 40px 20px; color: #aaa; }
             .empty-state-icon { font-size: 3rem; margin-bottom: 15px; }
         `}</style>
@@ -160,8 +178,6 @@ export default function Todo() {
 
             <div className="add-card">
                 <h3>➕ Add New Task</h3>
-                {message && <div className="alert-success">{message}</div>}
-                {error && <div className="alert-danger">{error}</div>}
                 <div className="form-group">
                     <input placeholder="Task title" value={title} onChange={e => setTitle(e.target.value)} className="form-control" />
                     <input placeholder="Task description" value={description} onChange={e => setDesciption(e.target.value)} className="form-control" />
@@ -211,5 +227,6 @@ export default function Todo() {
                 ))}
             </div>
         </div>
-    </>
+        </>
+    );
 }
